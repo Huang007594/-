@@ -1,0 +1,124 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://inventory.gd" id="1"]
+
+[node name="Inventory" type="Control" anchor_left="0.0" anchor_top="0.0" anchor_right="1.0" anchor_bottom="1.0"]
+margin_left = 0
+margin_top = 0
+margin_right = 0
+margin_bottom = 0
+script = ExtResource("1")
+
+[node name="Background" type="TextureRect" parent="."]
+stretch_mode = 2
+expanded = true
+anchors_preset = 15
+anchor_left = 0.0
+anchor_top = 0.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+margin_left = 0
+margin_top = 0
+margin_right = 0
+margin_bottom = 0
+color = Color(0.1, 0.1, 0.1, 0.9)
+
+[node name="VBoxContainer" type="VBoxContainer" parent="."]
+anchors_preset = 15
+anchor_left = 0.0
+anchor_top = 0.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+margin_left = 0
+margin_top = 0
+margin_right = 0
+margin_bottom = 0
+custom_constants/separation = 20
+alignment = 2
+
+[node name="TitleLabel" type="Label" parent="VBoxContainer"]
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(0.8, 0.6, 0.2, 1)
+theme_override_font_sizes/font_size = 32
+text = "背包"
+
+[node name="ItemGrid" type="GridContainer" parent="VBoxContainer"]
+columns = 4
+custom_minimum_size = Vector2(0, 400)
+theme_override_constants/separation_h = 10
+theme_override_constants/separation_v = 10
+
+[node name="ItemSlot1" type="Button" parent="ItemGrid"]
+theme_override_font_sizes/font_size = 16
+text = "空槽"
+
+[node name="ItemSlot2" type="Button" parent="ItemGrid"]
+theme_override_font_sizes/font_size = 16
+text = "空槽"
+
+[node name="ItemSlot3" type="Button" parent="ItemGrid"]
+theme_override_font_sizes/font_size = 16
+text = "空槽"
+
+[node name="ItemSlot4" type="Button" parent="ItemGrid"]
+theme_override_font_sizes/font_size = 16
+text = "空槽"
+
+[node name="ItemSlot5" type="Button" parent="ItemGrid"]
+theme_override_font_sizes/font_size = 16
+text = "空槽"
+
+[node name="ItemSlot6" type="Button" parent="ItemGrid"]
+theme_override_font_sizes/font_size = 16
+text = "空槽"
+
+[node name="ItemSlot7" type="Button" parent="ItemGrid"]
+theme_override_font_sizes/font_size = 16
+text = "空槽"
+
+[node name="ItemSlot8" type="Button" parent="ItemGrid"]
+theme_override_font_sizes/font_size = 16
+text = "空槽"
+
+[node name="DetailsPanel" type="Panel" parent="VBoxContainer"]
+anchors_preset = 15
+anchor_left = 0.0
+anchor_top = 0.0
+anchor_right = 1.0
+anchor_bottom = 0.0
+margin_left = 0
+margin_top = 0
+margin_right = 0
+margin_bottom = 200
+
+[node name="DetailsVBox" type="VBoxContainer" parent="DetailsPanel"]
+anchors_preset = 15
+anchor_left = 0.0
+anchor_top = 0.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+margin_left = 20
+margin_top = 20
+margin_right = 20
+margin_bottom = 20
+custom_constants/separation = 10
+
+[node name="ItemNameLabel" type="Label" parent="DetailsVBox"]
+horizontal_alignment = 0
+theme_override_colors/font_color = Color(0.9, 0.9, 0.9, 1)
+theme_override_font_sizes/font_size = 24
+text = "物品名称"
+
+[node name="ItemDescriptionLabel" type="Label" parent="DetailsVBox"]
+horizontal_alignment = 0
+vertical_alignment = 0
+theme_override_colors/font_color = Color(0.7, 0.7, 0.7, 1)
+theme_override_font_sizes/font_size = 18
+text = "物品描述会显示在这里..."
+wrap = true
+
+[node name="CloseButton" type="Button" parent="VBoxContainer"]
+text = "关闭"
+theme_override_font_sizes/font_size = 20
+custom_minimum_size = Vector2(150, 50)
+horizontal_alignment = 2

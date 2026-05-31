@@ -1,0 +1,73 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://pause_menu.gd" id="1"]
+
+[node name="PauseMenu" type="Control" anchor_left="0.0" anchor_top="0.0" anchor_right="1.0" anchor_bottom="1.0"]
+margin_left = 0
+margin_top = 0
+margin_right = 0
+margin_bottom = 0
+script = ExtResource("1")
+
+[node name="Background" type="TextureRect" parent="."]
+stretch_mode = 2
+expanded = true
+anchors_preset = 15
+anchor_left = 0.0
+anchor_top = 0.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+margin_left = 0
+margin_top = 0
+margin_right = 0
+margin_bottom = 0
+color = Color(0, 0, 0, 0.7)
+
+[node name="VBoxContainer" type="VBoxContainer" parent="."]
+anchors_preset = 15
+anchor_left = 0.0
+anchor_top = 0.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+margin_left = 0
+margin_top = 0
+margin_right = 0
+margin_bottom = 0
+alignment = 2
+custom_constants/separation = 25
+
+[node name="TitleLabel" type="Label" parent="VBoxContainer"]
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(0.9, 0.9, 0.9, 1)
+theme_override_font_sizes/font_size = 36
+text = "游戏暂停"
+
+[node name="ResumeButton" type="Button" parent="VBoxContainer"]
+text = "继续游戏"
+theme_override_font_sizes/font_size = 24
+custom_minimum_size = Vector2(250, 60)
+horizontal_alignment = 2
+
+[node name="SaveButton" type="Button" parent="VBoxContainer"]
+text = "保存游戏"
+theme_override_font_sizes/font_size = 24
+custom_minimum_size = Vector2(250, 60)
+horizontal_alignment = 2
+
+[node name="LoadButton" type="Button" parent="VBoxContainer"]
+text = "读取游戏"
+theme_override_font_sizes/font_size = 24
+custom_minimum_size = Vector2(250, 60)
+horizontal_alignment = 2
+
+[node name="SettingsButton" type="Button" parent="VBoxContainer"]
+text = "设置"
+theme_override_font_sizes/font_size = 24
+custom_minimum_size = Vector2(250, 60)
+horizontal_alignment = 2
+
+[node name="MainMenuButton" type="Button" parent="VBoxContainer"]
+text = "返回主菜单"
+theme_override_font_sizes/font_size = 24
+custom_minimum_size = Vector2(250, 60)
+horizontal_alignment = 2

@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>暗夜回廊 — CORRIDOR Demo</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#000;overflow:hidden;font-family:'Segoe UI',system-ui,sans-serif;color:#ccc;user-select:none}
+canvas#game{display:block;position:fixed;inset:0}
+canvas#minimap{position:fixed;top:12px;right:12px;border:1px solid rgba(255,51,68,.4);border-radius:4px;z-index:20}
+#hud{position:fixed;top:0;left:0;width:100%;pointer-events:none;z-index:10}
+#top-bar{display:flex;justify-content:space-between;align-items:flex-start;padding:12px 16px}
+.bar-wrap{background:rgba(255,255,255,.08);border-radius:4px;overflow:hidden;border:1px solid rgba(255,255,255,.1)}
+#hp-bar{width:180px;height:8px}#hp-fill{height:100%;background:#ff3344;transition:width .3s,background .3s;border-radius:4px}
+#battery-bar{width:120px;height:8px;margin-top:4px}#battery-fill{height:100%;background:#66ff66;transition:width .1s;border-radius:4px}
+#timer-bar{width:200px;height:6px;background:rgba(255,255,255,.06);border-radius:3px;overflow:hidden;margin-top:2px}
+#timer-fill{height:100%;background:#fff;transition:width .5s,background .5s;border-radius:3px}
+#status-text{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);font-size:13px;color:rgba(255,255,255,.5);z-index:20;pointer-events:none;text-align:center;white-space:nowrap}
+#crosshair{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:20px;height:20px;z-index:15;pointer-events:none}
+#crosshair::before,#crosshair::after{content:'';position:absolute;background:rgba(255,255,255,.3)}
+#crosshair::before{width:2px;height:100%;left:50%;transform:translateX(-50%)}
+#crosshair::after{width:100%;height:2px;top:50%;transform:translateY(-50%)}
+#overlay{position:fixed;inset:0;z-index:100;display:none;flex-direction:column;align-items:center;justify-content:center;cursor:pointer}
+#overlay.death{background:#000}#overlay.death h1{color:#ff3344;font-size:3rem;letter-spacing:.2em;text-shadow:0 0 40px rgba(255,51,68,.5);animation:pulse 1.5s infinite}
+#overlay.win{background:rgba(0,0,0,.9)}#overlay.win h1{color:#33ff88;font-size:2.5rem;letter-spacing:.2em;text-shadow:0 0 40px rgba(51,255,136,.5)}
+#overlay p{color:rgba(255,255,255,.4);margin-top:1rem;font-size:.9rem}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
+#start-screen{position:fixed;inset:0;background:#0a0a0f;z-index:200;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer}
+#start-screen h1{color:#fff;font-size:clamp(2rem,6vw,4rem);font-weight:900;letter-spacing:.15em;text-shadow:0 0 60px rgba(255,51,68,.4)}
+#start-screen .sub{color:#666680;letter-spacing:.4em;font-size:.8rem;margin-top:.5rem}
+#start-screen .hint{color:rgba(255,255,255,.3);margin-top:3rem;font-size:.85rem;animation:blink 2s infinite}
+#start-screen .keys{color:rgba(255,255,255,.2);margin-top:1.5rem;font-size:.7rem;text-align:center;line-height:2}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+#msg-popup{position:fixed;top:35%;left:50%;transform:translate(-50%,-50%);z-index:50;pointer-events:none;font-size:1.4rem;font-weight:700;color:#fff;text-shadow:0 0 20px rgba(255,51,68,.8);opacity:0;transition:opacity .3s}
+</style>
+</head>
+<body>
+<div id="start-screen">
+  <h1>暗夜回廊</h1>
+  <div class="sub">CORRIDOR</div>
+  <div class="hint">点击开始游戏</div>
+  <div class="keys">WASD 移动 · 鼠标转向 · F 手电筒 · N 夜视仪 · Q 终极技能<br>Shift 冲刺 · Ctrl 蹲下</div>
+</div>
+<div id="overlay"><h1></h1><p>点击重新开始</p></div>
+<div id="msg-popup"></div>
+<canvas id="game"></canvas>
+<canvas id="minimap" width="150" height="150"></canvas>
+<div id="hud"><div id="top-bar">
+  <div><div style="font-size:10px;color:rgba(255,255,255,.3);margin-bottom:3px">HP</div><div class="bar-wrap" id="hp-bar"><div id="hp-fill" style="width:100%"></div></div></div>
+  <div><div id="timer-bar"><div id="timer-fill" style="width:100%"></div></div><div id="timer-label" style="font-size:10px;color:rgba(255,255,255,.25);text-align:center;margin-top:2px">迷宫重构 30s</div></div>
+  <div style="text-align:right"><div style="font-size:10px;color:rgba(255,255,255,.3);margin-bottom:3px">夜视仪</div><div class="bar-wrap" id="battery-bar"><div id="battery-fill" style="width:100%"></div></div></div>
+</div></div>
+<div id="crosshair"></div>
+<div id="status-text">F 手电筒 · N 夜视仪 · Q 金色铁拳</div>
+<script>
+const C={MW:11,MH:11,REGEN:30,MOVE:0.06,SPRINT:1.6,CROUCH:0.45,TURN:0.003,FOV:Math.PI/3,RAYS:320,FLASH_R:12,NV_R:18,MON_SPD:0.025,MON_CHASE:0.055,MON_DET:6,HP:100,DMG:15};
+let maze=[],px=1.5,py=1.5,pa=0,hp=C.HP,dead=false,won=false,flash=false,nv=false,nvBat=100,sprint=false,crouch=false;
+let mons=[],traps=[],regen=C.REGEN,exX,exY,stX,stY,ultRdy=true,ultCD=0,invT=0,dmgF=0,hBob=0,hBobA=0;
+let explored=new Set(),started=false,lastT=0,keys={},locked=false;
+
+const cvs=document.getElementById('game'),cx=cvs.getContext('2d');
+const mm=document.getElementById('minimap'),mc=mm.getContext('2d');
+function resize(){cvs.width=innerWidth;cvs.height=innerHeight}
+resize();addEventListener('resize',resize);
+
+function genMaze(){
+  maze=[];for(let y=0;y<C.MH*2+1;y++){maze[y]=[];for(let x=0;x<C.MW*2+1;x++)maze[y][x]=1}
+  const vis=Array.from({length:C.MH},()=>Array(C.MW).fill(false));
+  function carve(cx2,cy2){
+    vis[cy2][cx2]=true;maze[cy2*2+1][cx2*2+1]=0;
+    const d=[[0,-1],[1,0],[0,1],[-1,0]].sort(()=>Math.random()-.5);
+    for(const[dx,dy]of d){
+      const nx=cx2+dx,ny=cy2+dy;
+      if(nx>=0&&nx<C.MW&&ny>=0&&ny<C.MH&&!vis[ny][nx]){
+        maze[cy2*2+1+dy][cx2*2+1+dx]=0;carve(nx,ny);
+      }
+    }
+  }
+  carve(0,0);
+  for(let y=1;y<C.MH*2;y++)for(let x=1;x<C.MW*2;x++){
+    if(maze[y][x]===1&&Math.random()<0.2){
+      let h=maze[y][x-1]===0&&maze[y][x+1]===0&&(maze[y-1]||[])[x]===1&&(maze[y+1]||[])[x]===1;
+      let v=(maze[y-1]||[])[x]===0&&(maze[y+1]||[])[x]===0&&maze[y][x-1]===1&&maze[y][x+1]===1;
+      if(h||v)maze[y][x]=0;
+    }
+  }
+  stX=1;stY=1;exX=C.MW*2-1;exY=C.MH*2-1;
+  maze[exY][exX]=0;
+  if(maze[exY-1][exX]===1&&maze[exY][exX-1]===1)maze[exY][exX-1]=0;
+  px=stX+.5;py=stY+.5;explored=new Set();markExp();
+  traps=[];mons=[];
+  for(let y=1;y<C.MH*2;y++)for(let x=1;x<C.MW*2;x++){
+    if(maze[y][x]===0&&!(x===stX&&y===stY)&&!(x===exX&&y===exY)&&Math.random()<0.08)traps.push({x,y,off:false});
+  }
+  for(let i=0;i<2;i++){
+    let mx,my;do{mx=~~(Math.random()*(C.MW*2-2))+1;my=~~(Math.random()*(C.MH*2-2))+1}while(maze[my][mx]===1||(Math.abs(mx-stX)+Math.abs(my-stY))<6);
+    mons.push({x:mx+.5,y:my+.5,st:'patrol',tx:0,ty:0,pt:Math.random()*5,lt:0,lsX:0,lsY:0,stun:0,tp:i===0?'stalker':'sprinter'});
+  }
+  regen=C.REGEN;
+}
+function markExp(){
+  const cx2=~~px,cy2=~~py;
+  for(let dy=-4;dy<=4;dy++)for(let dx=-4;dx<=4;dx++){
+    if(Math.abs(dx)+Math.abs(dy)<=5){const nx=cx2+dx,ny=cy2+dy;if(nx>=0&&nx<C.MW*2+1&&ny>=0&&ny<C.MH*2+1)explored.add(ny*1e3+nx)}
+  }
+}
+
+document.addEventListener('keydown',e=>{
+  keys[e.code]=true;
+  if(!started||dead||won)return;
+  if(e.code==='KeyF'){flash=!flash;if(flash)nv=false}
+  if(e.code==='KeyN'&&nvBat>0){nv=!nv;if(nv)flash=false}
+  if(e.code==='KeyQ'&&ultRdy)fireUlt();
+});
+document.addEventListener('keyup',e=>keys[e.code]=false);
+cvs.addEventListener('click',()=>{if(started&&!dead&&!won)cvs.requestPointerLock()});
+document.addEventListener('pointerlockchange',()=>locked=document.pointerLockElement===cvs);
+document.addEventListener('mousemove',e=>{if(locked)pa+=e.movementX*C.TURN});
+
+document.getElementById('start-screen').addEventListener('click',function(){
+  this.style.display='none';started=true;genMaze();lastT=performance.now();requestAnimationFrame(loop);
+  setTimeout(()=>cvs.requestPointerLock(),100);
+});
+document.getElementById('overlay').addEventListener('click',function(){
+  this.style.display='none';dead=false;won=false;hp=C.HP;flash=false;nv=false;nvBat=100;genMaze();
+  setTimeout(()=>cvs.requestPointerLock(),100);
+});
+
+function fireUlt(){
+  ultRdy=false;ultCD=3;dmgF=.5;
+  mons.forEach(m=>{
+    const d=Math.hypot(m.x-px,m.y-py);
+    if(d<8){let a=Math.atan2(m.y-py,m.x-px),df=a-pa;
+      while(df>Math.PI)df-=Math.PI*2;while(df<-Math.PI)df+=Math.PI*2;
+      if(Math.abs(df)<Math.PI/3){m.stun=2;m.st==='chase'&&(m.st='patrol');
+        const k=3,nx=m.x+Math.cos(a)*k,ny=m.y+Math.sin(a)*k;
+        if((maze[~~ny]||[])[~~nx]===0){m.x=nx;m.y=ny}
+      }
+    }
+  });
+  showMsg('金色铁拳！');
+}
+function showMsg(t){const e=document.getElementById('msg-popup');e.textContent=t;e.style.opacity='1';setTimeout(()=>e.style.opacity='0',1200)}
+
+function los(x1,y1,x2,y2){
+  const d=Math.hypot(x2-x1,y2-y1),s=~~(d*3);
+  for(let i=0;i<=s;i++){const t=i/s;if((maze[~~(y1+(y2-y1)*t)]||[])[~~(x1+(x2-x1)*t)]===1)return false}
+  return true;
+}
+function moveM(m,tx,ty,sp){
+  const a=Math.atan2(ty-m.y,tx-m.x),nx=m.x+Math.cos(a)*sp,ny=m.y+Math.sin(a)*sp;
+  if((maze[~~m.y]||[])[~~nx]===0)m.x=nx;if((maze[~~ny]||[])[~~m.x]===0)m.y=ny;
+}
+
+function update(dt){
+  if(dead||won)return;
+  let sp=C.MOVE;sprint=keys.ShiftLeft||keys.ShiftRight;crouch=keys.ControlLeft||keys.ControlRight;
+  if(sprint)sp*=C.SPRINT;if(crouch)sp*=C.CROUCH;
+  let dx=0,dy=0;
+  if(keys.KeyW){dx+=Math.cos(pa)*sp;dy+=Math.sin(pa)*sp}
+  if(keys.KeyS){dx-=Math.cos(pa)*sp;dy-=Math.sin(pa)*sp}
+  if(keys.KeyA){dx+=Math.cos(pa-Math.PI/2)*sp*.7;dy+=Math.sin(pa-Math.PI/2)*sp*.7}
+  if(keys.KeyD){dx+=Math.cos(pa+Math.PI/2)*sp*.7;dy+=Math.sin(pa+Math.PI/2)*sp*.7}
+  const r=.2;
+  if((maze[~~py]||[])[~~(px+dx+r*Math.sign(dx))]===0)px+=dx;
+  if((maze[~~(py+dy+r*Math.sign(dy))]||[])[~~px]===0)py+=dy;
+  if(Math.abs(dx)>.001||Math.abs(dy)>.001){hBob+=dt*(sprint?12:8);hBobA=Math.min(hBobA+dt*4,sprint?6:3)}else hBobA*=.9;
+  markExp();
+  if(nv){nvBat=Math.max(0,nvBat-8*dt);if(nvBat<=0)nv=false}else nvBat=Math.min(100,nvBat+15*dt);
+  if(!ultRdy){ultCD-=dt;if(ultCD<=0)ultRdy=true}
+  if(invT>0)invT-=dt;if(dmgF>0)dmgF-=dt;
+  if(hp<C.HP&&hp>0)hp=Math.min(C.HP,hp+3*dt);
+  regen-=dt;if(regen<=0){genMaze();showMsg('迷宫重构！')}
+  if(~~px===exX&&~~py===exY){won=true;const o=document.getElementById('overlay');o.className='win';o.querySelector('h1').textContent='逃 脱 成 功';o.style.display='flex';document.exitPointerLock()}
+  traps.forEach(t=>{
+    if(!t.off&&~~px===t.x&&~~py===t.y){
+      t.off=true;
+      const dd=[[0,-1],[1,0],[0,1],[-1,0]];
+      for(const[ddx,ddy]of dd){const sx=~~px+ddx,sy=~~py+ddy;if((maze[sy]||[])[sx]===0){
+        mons.push({x:sx+.5,y:sy+.5,st:'chase',tx:0,ty:0,pt:0,lt:0,lsX:px,lsY:py,stun:0,tp:'ambusher'});break;
+      }}
+      dmgF=.4;showMsg('陷阱触发！');
+    }
+  });
+  const DD=[[0,-1],[1,0],[0,1],[-1,0]];
+  mons.forEach(m=>{
+    if(m.stun>0){m.stun-=dt;return}
+    const dist=Math.hypot(m.x-px,m.y-py);
+    const hear=crouch?2:sprint?8:5;
+    const see=dist<C.MON_DET&&los(m.x,m.y,px,py);
+    if(m.st==='patrol'){
+      m.pt-=dt;
+      if(see||dist<hear){m.st='chase';m.lsX=px;m.lsY=py}
+      else if(m.pt<=0){m.pt=2+Math.random()*3;const d=DD[~~(Math.random()*4)];m.tx=m.x+d[0]*3;m.ty=m.y+d[1]*3}
+      else moveM(m,m.tx,m.ty,C.MON_SPD*.5);
+    }else if(m.st==='chase'){
+      if(see){m.lsX=px;m.lsY=py}
+      const spd=m.tp==='sprinter'?C.MON_CHASE*1.4:C.MON_CHASE;
+      moveM(m,m.lsX,m.lsY,spd);
+      if(!see&&!hear&&dist>C.MON_DET){m.st='search';m.lt=4}
+      if(dist<.8&&invT<=0){hp-=C.DMG;invT=1;dmgF=.3;
+        if(hp<=0){hp=0;dead=true;const o=document.getElementById('overlay');o.className='death';o.querySelector('h1').textContent='你 死 了';o.style.display='flex';document.exitPointerLock()}
+      }
+    }else if(m.st==='search'){
+      m.lt-=dt;moveM(m,m.lsX,m.lsY,C.MON_SPD*.7);
+      if(see||dist<hear){m.st='chase';m.lsX=px;m.lsY=py}
+      if(m.lt<=0)m.st='patrol';
+    }
+  });
+}
+
+function render(){
+  const W=cvs.width,H=cvs.height,bob=Math.sin(hBob)*hBobA;
+  cx.fillStyle='#000';cx.fillRect(0,0,W,H);
+  const nR=Math.min(C.RAYS,W),sW=W/nR;
+  for(let i=0;i<nR;i++){
+    const ra=pa-C.FOV/2+(i/nR)*C.FOV,s=Math.sin(ra),c=Math.cos(ra);
+    let dist=0,side=0;const step=.05;
+    while(dist<25){dist+=step;const mx=px+c*dist,my=py+s*dist;
+      if(mx<0||mx>=C.MW*2+1||my<0||my>=C.MH*2+1)break;
+      if((maze[~~my]||[])[~~mx]===1){const pv=px+c*(dist-step);side=~~pv!==~~mx?0:1;break}
+    }
+    const cd=Math.max(.1,dist*Math.cos(ra-pa)),wH=Math.min(H*2,H/cd),wT=(H-wH)/2+bob;
+    let br=0;
+    if(flash){let ad=ra-pa;while(ad>Math.PI)ad-=Math.PI*2;while(ad<-Math.PI)ad+=Math.PI*2;
+      br=Math.max(0,1-Math.abs(ad)/(Math.PI/4))*Math.max(0,1-cd/C.FLASH_R)}
+    if(nv)br=Math.max(br,Math.max(0,1-cd/C.NV_R)*.8);
+    br=Math.max(br,Math.max(0,1-cd/4)*.06);
+    let r,g,b;
+    if(nv){const n=br*(side?.7:1);r=~~(20*n);g=~~(180*n+30);b=~~(20*n)}
+    else{const n=br*(side?.65:1);r=~~(140*n);g=~~(120*n);b=~~(130*n)}
+    cx.fillStyle=`rgb(${r},${g},${b})`;cx.fillRect(i*sW,wT,sW+1,wH);
+    const fS=wT+wH;
+    if(fS<H){cx.fillStyle=nv?`rgba(0,${~~(60*br)},0,.8)`:`rgba(${~~(40*br)},${~~(35*br)},${~~(45*br)},.8)`;cx.fillRect(i*sW,fS,sW+1,H-fS)}
+    if(wT>0){cx.fillStyle=nv?`rgba(0,${~~(30*br)},0,.6)`:`rgba(${~~(20*br)},${~~(18*br)},${~~(25*br)},.6)`;cx.fillRect(i*sW,0,sW+1,wT)}
+  }
+  // sprites
+  let sprites=[];
+  const eDist=Math.hypot(exX+.5-px,exY+.5-py);
+  if(eDist<20)sprites.push({x:exX+.5,y:exY+.5,d:eDist,t:'exit'});
+  traps.forEach(t=>{if(!t.off){const d=Math.hypot(t.x+.5-px,t.y+.5-py);if(d<12)sprites.push({x:t.x+.5,y:t.y+.5,d,t:'trap'})}});
+  mons.forEach(m=>{const d=Math.hypot(m.x-px,m.y-py);if(d<15)sprites.push({x:m.x,y:m.y,d,t:'mon',m})});
+  sprites.sort((a,b)=>b.d-a.d);
+  sprites.forEach(s=>{
+    const a=Math.atan2(s.y-py,s.x-px);let df=a-pa;while(df>Math.PI)df-=Math.PI*2;while(df<-Math.PI)df+=Math.PI*2;
+    if(Math.abs(df)>C.FOV/2+.2)return;if(!los(px,py,s.x,s.y))return;
+    const sx=W/2+(df/C.FOV)*W,cd=Math.max(.1,s.d*Math.cos(df)),sH=H/cd*.6,sW2=sH*.6,sT=(H-sH)/2+bob;
+    let br=0;if(flash){let ad=a-pa;while(ad>Math.PI)ad-=Math.PI*2;while(ad<-Math.PI)ad+=Math.PI*2;
+      br=Math.max(0,1-Math.abs(ad)/(Math.PI/4))*Math.max(0,1-cd/C.FLASH_R)}
+    if(nv)br=Math.max(br,Math.max(0,1-cd/C.NV_R)*.8);
+    if(s.t==='exit'){
+      const gl=(Math.sin(performance.now()/500)+1)/2,al=Math.min(1,br*.8+gl*.2);
+      cx.fillStyle=`rgba(51,255,136,${al})`;cx.fillRect(sx-sW2/2,sT,sW2,sH);
+      const grd=cx.createRadialGradient(sx,sT+sH/2,0,sx,sT+sH/2,sW2*2);
+      grd.addColorStop(0,`rgba(51,255,136,${al*.3})`);grd.addColorStop(1,'rgba(51,255,136,0)');
+      cx.fillStyle=grd;cx.fillRect(sx-sW2*2,sT-sH/2,sW2*4,sH*2);
+    }else if(s.t==='trap'){
+      const pu=(Math.sin(performance.now()/400)+1)/2,al=Math.min(1,br*.7+pu*.1);
+      cx.fillStyle=`rgba(255,0,0,${al})`;cx.fillRect(sx-sW2/3,sT+sH*.7,sW2*.66,sH*.3);
+    }else if(s.t==='mon'){
+      const m=s.m,cols={stalker:[200,40,40],sprinter:[200,180,20],ambusher:[150,50,200]}[m.tp]||[200,40,40];
+      const al=Math.min(1,br*.9),sa=m.stun>0?.5+Math.sin(performance.now()/100)*.3:1;
+      cx.fillStyle=`rgba(${cols},${al*sa})`;cx.fillRect(sx-sW2/2,sT+sH*.15,sW2,sH*.85);
+      cx.fillStyle=`rgba(${cols.map(c=>Math.min(255,c+30)).join(',')},${al*sa})`;
+      cx.beginPath();cx.arc(sx,sT+sH*.12,sW2*.35,0,Math.PI*2);cx.fill();
+      cx.fillStyle=`rgba(255,${m.tp==='sprinter'?255:0},${m.tp==='ambusher'?255:0},${al})`;
+      cx.fillRect(sx-sW2*.15,sT+sH*.08,sW2*.1,sW2*.08);cx.fillRect(sx+sW2*.05,sT+sH*.08,sW2*.1,sW2*.08);
+      const grd=cx.createRadialGradient(sx,sT+sH/2,0,sx,sT+sH/2,sW2*1.5);
+      grd.addColorStop(0,`rgba(${cols},${al*.15})`);grd.addColorStop(1,`rgba(${cols},0)`);
+      cx.fillStyle=grd;cx.fillRect(sx-sW2*1.5,sT-sH*.3,sW2*3,sH*1.6);
+    }
+  });
+  // overlays
+  if(dmgF>0){cx.fillStyle=`rgba(255,0,0,${dmgF*.5})`;cx.fillRect(0,0,W,H)}
+  if(nv){
+    const id=cx.getImageData(0,0,W,H),d=id.data;
+    for(let i=0;i<d.length;i+=16){const n=(Math.random()-.5)*25;d[i]+=n;d[i+1]+=n+10;d[i+2]+=n}
+    cx.putImageData(id,0,0);
+    const grd=cx.createRadialGradient(W/2,H/2,W*.25,W/2,H/2,W*.6);
+    grd.addColorStop(0,'rgba(0,0,0,0)');grd.addColorStop(1,'rgba(0,0,0,.6)');
+    cx.fillStyle=grd;cx.fillRect(0,0,W,H);
+    cx.fillStyle='rgba(0,255,0,.02)';for(let y=0;y<H;y+=3)cx.fillRect(0,y,W,1);
+  }
+  if(flash){const grd=cx.createRadialGradient(W/2,H*.45,0,W/2,H*.45,W*.5);
+    grd.addColorStop(0,'rgba(255,240,200,.03)');grd.addColorStop(.5,'rgba(255,240,200,.01)');grd.addColorStop(1,'rgba(0,0,0,0)');
+    cx.fillStyle=grd;cx.fillRect(0,0,W,H)}
+  if(hp<40){const pu=(Math.sin(performance.now()/300)+1)/2;
+    const grd=cx.createRadialGradient(W/2,H/2,W*.2,W/2,H/2,W*.7);
+    grd.addColorStop(0,'rgba(0,0,0,0)');grd.addColorStop(1,`rgba(255,0,0,${.15*pu*(1-hp/40)})`);
+    cx.fillStyle=grd;cx.fillRect(0,0,W,H)}
+  // minimap
+  const mw=mm.width,mh=mm.height,rng=5.5;
+  mc.fillStyle='rgba(10,10,15,.85)';mc.fillRect(0,0,mw,mh);
+  for(let dy=-rng;dy<=rng;dy++)for(let dx=-rng;dx<=rng;dx++){
+    const mx=~~(px+dx),my=~~(py+dy);
+    if(mx<0||mx>=C.MW*2+1||my<0||my>=C.MH*2+1||!explored.has(my*1e3+mx))continue;
+    const sx2=(dx/rng)*(mw/2)+mw/2,sy2=(dy/rng)*(mh/2)+mh/2,cs=(1/rng)*(mw/2);
+    mc.fillStyle=(maze[my]||[])[mx]===1?'rgba(100,100,120,.5)':'rgba(30,30,40,.3)';
+    mc.fillRect(sx2-cs/2,sy2-cs/2,cs+.5,cs+.5);
+  }
+  const edx=(exX+.5-px)/rng*(mw/2)+mw/2,edy=(exY+.5-py)/rng*(mh/2)+mh/2;
+  if(edx>0&&edx<mw&&edy>0&&edy<mh){const gl=(Math.sin(performance.now()/400)+1)/2;
+    mc.fillStyle=`rgba(51,255,136,${.5+gl*.5})`;mc.beginPath();mc.arc(edx,edy,3,0,Math.PI*2);mc.fill()}
+  traps.forEach(t=>{if(t.off)return;const tx=(t.x+.5-px)/rng*(mw/2)+mw/2,ty=(t.y+.5-py)/rng*(mh/2)+mh/2;
+    if(tx>0&&tx<mw&&ty>0&&ty<mh){mc.fillStyle='rgba(255,0,0,.6)';mc.beginPath();mc.arc(tx,ty,1.5,0,Math.PI*2);mc.fill()}});
+  mons.forEach(m=>{const d=Math.hypot(m.x-px,m.y-py);if(d>rng||(m.st!=='chase'&&d>4))return;
+    const mx2=(m.x-px)/rng*(mw/2)+mw/2,my2=(m.y-py)/rng*(mh/2)+mh/2;
+    if(mx2>0&&mx2<mw&&my2>0&&my2<mh){mc.fillStyle={stalker:'#ff3344',sprinter:'#ffcc00',ambusher:'#aa44ff'}[m.tp];
+      mc.beginPath();mc.arc(mx2,my2,2.5,0,Math.PI*2);mc.fill()}});
+  mc.fillStyle='#ffd700';mc.beginPath();mc.arc(mw/2,mh/2,3,0,Math.PI*2);mc.fill();
+  mc.strokeStyle='rgba(255,215,0,.5)';mc.lineWidth=1.5;mc.beginPath();mc.moveTo(mw/2,mh/2);
+  mc.lineTo(mw/2+Math.cos(pa)*12,mh/2+Math.sin(pa)*12);mc.stroke();
+  // HUD
+  document.getElementById('hp-fill').style.width=(hp/C.HP*100)+'%';
+  document.getElementById('hp-fill').style.background=hp<30?'#ff0022':hp<60?'#ffaa00':'#ff3344';
+  document.getElementById('battery-fill').style.width=nvBat+'%';
+  document.getElementById('battery-fill').style.background=nvBat<20?'#ff3344':nvBat<50?'#ffcc00':'#66ff66';
+  const rp=regen/C.REGEN*100;const tf=document.getElementById('timer-fill');
+  tf.style.width=rp+'%';tf.style.background=rp<20?'#ff3344':rp<50?'#ffaa00':'#fff';
+  document.getElementById('timer-label').textContent='迷宫重构 '+Math.ceil(regen)+'s';
+  const pp=[];if(flash)pp.push('手电筒 ON');if(nv)pp.push('夜视仪 ON');if(sprint)pp.push('冲刺');if(crouch)pp.push('蹲下');
+  pp.push(ultRdy?'Q 金色铁拳 就绪':'Q 冷却 '+ultCD.toFixed(1)+'s');
+  document.getElementById('status-text').textContent=pp.join(' · ');
+}
+
+function loop(t){
+  const dt=Math.min((t-lastT)/1000,.05);lastT=t;update(dt);render();requestAnimationFrame(loop);
+}
+</script>
+</body>
+</html>

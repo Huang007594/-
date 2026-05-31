@@ -1,0 +1,65 @@
+[gd_scene load_steps=10 format=3]
+
+[ext_resource type="Script" path="res://player.gd" id="1"]
+[ext_resource type="Script" path="res://corridor_generator.gd" id="2"]
+[ext_resource type="Script" path="res://minimap.gd" id="4"]
+[ext_resource type="Script" path="res://dialogue_box.gd" id="5"]
+[ext_resource type="Script" path="res://inventory.gd" id="6"]
+[ext_resource type="Script" path="res://letter_reader.gd" id="7"]
+[ext_resource type="Script" path="res://clue_board.gd" id="8"]
+[ext_resource type="Script" path="res://pause_menu.gd" id="9"]
+[ext_resource type="Script" path="res://ending_screen.gd" id="10"]
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_1"]
+radius = 0.4
+height = 1.8
+
+[node name="root" type="Node3D" unique_id=1280006461]
+script = ExtResource("2")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=453411260]
+
+[node name="Player" type="CharacterBody3D" parent="." unique_id=465858317]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.5, 0.5, 2.5)
+script = ExtResource("1")
+
+[node name="CollisionShape" type="CollisionShape3D" parent="Player" unique_id=1425105594]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)
+shape = SubResource("CapsuleShape3D_1")
+
+[node name="Camera3D" type="Camera3D" parent="Player" unique_id=852589579]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.7, 0)
+
+[node name="Flashlight" type="SpotLight3D" parent="Player/Camera3D" unique_id=900000001]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+light_energy = 4.0
+spot_range = 25.0
+spot_angle = 35.0
+spot_angle_attenuation = 1.2
+visible = false
+
+[node name="RayCast3D" type="RayCast3D" parent="Player" unique_id=451003549]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.2, 0)
+target_position = Vector3(0, 0.5, 0)
+
+
+[node name="Minimap" type="CanvasLayer" parent="." unique_id=500000001]
+script = ExtResource("4")
+
+[node name="DialogueBox" type="CanvasLayer" parent="." unique_id=600000001]
+script = ExtResource("5")
+
+[node name="Inventory" type="CanvasLayer" parent="." unique_id=600000002]
+script = ExtResource("6")
+
+[node name="LetterReader" type="CanvasLayer" parent="." unique_id=600000003]
+script = ExtResource("7")
+
+[node name="ClueBoard" type="CanvasLayer" parent="." unique_id=600000004]
+script = ExtResource("8")
+
+[node name="PauseMenu" type="CanvasLayer" parent="." unique_id=600000005]
+script = ExtResource("9")
+
+[node name="EndingScreen" type="CanvasLayer" parent="." unique_id=600000006]
+script = ExtResource("10")

@@ -1,0 +1,89 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://ending_screen.gd" id="1"]
+
+[node name="EndingScreen" type="Control" anchor_left="0.0" anchor_top="0.0" anchor_right="1.0" anchor_bottom="1.0"]
+margin_left = 0
+margin_top = 0
+margin_right = 0
+margin_bottom = 0
+script = ExtResource("1")
+
+[node name="Background" type="TextureRect" parent="."]
+stretch_mode = 2
+expanded = true
+anchors_preset = 15
+anchor_left = 0.0
+anchor_top = 0.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+margin_left = 0
+margin_top = 0
+margin_right = 0
+margin_bottom = 0
+color = Color(0.05, 0.05, 0.1, 0.9)
+
+[node name="VBoxContainer" type="VBoxContainer" parent="."]
+anchors_preset = 15
+anchor_left = 0.0
+anchor_top = 0.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+margin_left = 0
+margin_top = 0
+margin_right = 0
+margin_bottom = 0
+alignment = 2
+custom_constants/separation = 30
+
+[node name="TitleLabel" type="Label" parent="VBoxContainer"]
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(0.8, 0.6, 0.2, 1)
+theme_override_font_sizes/font_size = 36
+text = "游戏结束"
+
+[node name="EndingTitleLabel" type="Label" parent="VBoxContainer"]
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(0.9, 0.9, 0.9, 1)
+theme_override_font_sizes/font_size = 28
+text = "结局：《未寄出的最后一封信》"
+
+[node name="CompletionLabel" type="Label" parent="VBoxContainer"]
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(0.8, 0.8, 0.8, 1)
+theme_override_font_sizes/font_size = 22
+text = "完成度: 83%"
+
+[node name="CollectionLabel" type="Label" parent="VBoxContainer"]
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(0.8, 0.8, 0.8, 1)
+theme_override_font_sizes/font_size = 22
+text = "收集率: 76%"
+
+[node name="UnlockLabel" type="Label" parent="VBoxContainer"]
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(0.8, 0.8, 0.8, 1)
+theme_override_font_sizes/font_size = 20
+text = "解锁内容: 额外章节《信件的秘密》"
+
+[node name="VBoxContainer2" type="VBoxContainer" parent="VBoxContainer"]
+custom_constants/separation = 15
+alignment = 2
+
+[node name="TipLabel1" type="Label" parent="VBoxContainer2"]
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(0.6, 0.6, 0.6, 1)
+theme_override_font_sizes/font_size = 16
+text = "提示: 不同的选择会导致不同的结局"
+
+[node name="TipLabel2" type="Label" parent="VBoxContainer2"]
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(0.6, 0.6, 0.6, 1)
+theme_override_font_sizes/font_size = 16
+text = "提示: 收集所有线索可以看到真相"
+
+[node name="ReturnButton" type="Button" parent="VBoxContainer"]
+text = "返回主菜单"
+theme_override_font_sizes/font_size = 24
+custom_minimum_size = Vector2(200, 60)
+horizontal_alignment = 2
